@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"time"
 
@@ -79,6 +80,11 @@ func realMain() error {
 
 		posts = append(posts, post)
 		return nil
+	})
+
+	// Reverse-chronological order.
+	sort.Slice(posts, func(i, j int) bool {
+		return posts[i].Date.After(posts[j].Date)
 	})
 
 	td := templateData{
