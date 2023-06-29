@@ -1,3 +1,3 @@
 build:
-	cd md2html && go build
-	./md2html/md2html data/
+	cd md2html && cargo build
+	./md2html/target/debug/md2html data/
