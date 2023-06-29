@@ -16,3 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: make lint
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: docker build .

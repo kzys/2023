@@ -5,7 +5,7 @@ WORKDIR /root/
 COPY md2html /root/md2html
 COPY data /root/data
 
-
+RUN apk add --no-cache musl-dev
 RUN cd md2html && cargo build
 RUN mkdir html/ && /root/md2html/target/debug/md2html /root/data/
 
