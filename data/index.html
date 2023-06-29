@@ -19,17 +19,17 @@
 	  font-size: 1rem;
       }
     </style>
-    <title>{{ .Title }}</title>
+    <title>{{ title }}</title>
   </head>
   <body>
-    <h1>{{ .Title }}</h1>
+    <h1>{{ title }}</h1>
 
-    {{ range .Posts }}
+    {{#each posts}}
     <article>
-      <h2>{{ .Date.Format "2006-01-02 (Mon)" }}</h2>
-      {{ .HTML }}
+      <h2>{{ date }}</h2>
+      {{{ this.html }}}
     </article>
-    {{ end }}
+    {{/each}}
 
   </body>
 </html>

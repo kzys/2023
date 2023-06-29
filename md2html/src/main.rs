@@ -1,6 +1,8 @@
 use chrono::NaiveDate;
+use handlebars::Handlebars;
 use pulldown_cmark::{html, Parser};
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
     error::Error,
@@ -34,9 +36,9 @@ fn scan_year_dir(
     Ok(())
 }
 
-fn real_main() -> result::Result<(), Box<dyn Error>> {
+fn collect_files(dir: &str) -> result::Result<BTreeMap<NaiveDate, PathBuf>, Box<dyn Error>> {
     let mut dates: BTreeMap<NaiveDate, PathBuf> = BTreeMap::new();
-    for entry in fs::read_dir("data")? {
+    for entry in fs::read_dir(dir)? {
         let entry = entry?;
         let basename = entry.file_name();
         let s = basename.to_str().unwrap();
@@ -45,11 +47,37 @@ fn real_main() -> result::Result<(), Box<dyn Error>> {
             scan_year_dir(&mut dates, &entry.path(), year)?;
         }
     }
+    Ok(dates)
+}
 
-    let fw = File::create("html/index.html")?;
-    let mut bw = BufWriter::new(fw);
+#[derive(Serialize)]
+struct Post {
+    date: String,
+    html: String,
+}
 
-    bw.write(b"<!doctype><meta charset=utf-8>")?;
+#[derive(Serialize)]
+struct TemplateData {
+    title: String,
+    posts: Vec<Post>,
+}
+
+fn real_main() -> result::Result<(), Box<dyn Error>> {
+    let dates = collect_files("data")?;
+
+    let mut handlebars = Handlebars::new();
+
+    let f = File::open("data/index.html")?;
+    let mut reader = BufReader::new(f);
+    let mut content = String::new();
+    reader.read_to_string(&mut content)?;
+
+    handlebars.register_template_string("index", content)?;
+
+    let mut td = TemplateData {
+        title: "2023.8-p.info".to_string(),
+        posts: Vec::new(),
+    };
 
     for (date, path) in dates.iter().rev().take(5) {
         let f = File::open(path)?;
@@ -61,12 +89,22 @@ fn real_main() -> result::Result<(), Box<dyn Error>> {
         let mut html = String::new();
         html::push_html(&mut html, parser);
 
-        bw.write(html.as_bytes())?;
+        td.posts.push(Post {
+            date: date.format("%Y-%m-%d").to_string(),
+            html: html,
+        });
     }
+
+    let fw = File::create("html/index.html")?;
+    let mut bw = BufWriter::new(fw);
+    bw.write(handlebars.render("index", &td)?.as_bytes());
 
     Ok(())
 }
 
 fn main() {
-    real_main();
+    let result = real_main();
+    if let Err(e) = result {
+        eprintln!("{}", e)
+    }
 }
