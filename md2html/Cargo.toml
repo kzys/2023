@@ -10,3 +10,5 @@ regex = "1"
 chrono = "0.4"
 markdown = "1.0.0-alpha.10"
 pulldown-cmark = "0.9.3"
+handlebars = "4.3.7"
+serde = { version = "1.0.164", features = ["derive"] }
