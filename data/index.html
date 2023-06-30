@@ -26,7 +26,13 @@
 
     {{#each posts}}
     <article>
-      <h2>{{ date }}</h2>
+      <h2 id={{id}}>
+	{{#if permalink}}
+	<a href={{permalink}}>{{ date }}</a>
+	{{else}}
+	{{ date }}
+	{{/if}}
+      </h2>
       {{{ this.html }}}
     </article>
     {{/each}}
