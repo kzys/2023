@@ -18,20 +18,34 @@
 	  font-family: monospace;
 	  font-size: 1rem;
       }
+
+      article {
+	  border-top: 1px solid #000;
+	  padding: 2rem 0;
+      }
+
+      hr {
+	  width: 50%;
+	  border: 1px solid #ccc;
+      }
+
+      h2:target {
+	  background-color: #ffa;
+      }
     </style>
     <title>{{ title }}</title>
   </head>
   <body>
-    <h1>{{ title }}</h1>
+    <header>
+      <h1>{{ title }}</h1>
+      <p>プログラマです。シアトルに住んでいます。</p>
+    </header>
 
     {{#each posts}}
     <article>
-      <h2 id={{id}}>
-	{{#if permalink}}
-	<a href={{permalink}}>{{ date }}</a>
-	{{else}}
-	{{ date }}
-	{{/if}}
+      <h2
+	{{#if id}}id={{id}}{{/if}}
+	>{{#if permalink}}<a href={{permalink}}>{{ date }}</a>{{else}}{{ date }}{{/if}}
       </h2>
       {{{ this.html }}}
     </article>
