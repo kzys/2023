@@ -154,16 +154,14 @@ fn real_main() -> result::Result<(), Box<dyn Error>> {
     let mut posts: Vec<(&NaiveDate, &PathBuf)> = Vec::new();
     for (date, path) in dates.iter() {
         if let Some(prev_date) = prev_date {
-            if prev_date.year() == date.year() && prev_date.month() == date.month() {
-                posts.push((date, path));
-            } else {
+	    if prev_date.year() != date.year() || prev_date.month() != date.month() {
                 make_monthly(&handlebars, &posts)?;
                 posts.clear();
             }
-        } else {
-            prev_date = Some(*date);
-            posts.push((date, path));
         }
+
+        posts.push((date, path));
+	prev_date = Some(*date);
     }
 
     if posts.len() > 0 {
