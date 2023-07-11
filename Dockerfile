@@ -1,10 +1,9 @@
-FROM rust:1.70-alpine AS builder
+FROM rust:1.70 AS builder
 
 WORKDIR /root/
 
 COPY md2html /root/md2html
 
-RUN apk add --no-cache musl-dev
 RUN cd md2html && cargo build
 
 COPY data /root/data
