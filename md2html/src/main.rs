@@ -13,6 +13,19 @@ use std::{
     result,
 };
 
+use argh::FromArgs;
+
+#[derive(FromArgs)]
+/// Reach new heights.
+struct Options {
+    /// an optional nickname for the pilot
+    #[argh(option)]
+    site_url: String,
+
+    #[argh(positional)]
+    dir: String,
+}
+
 fn scan_year_dir(
     dates: &mut BTreeMap<NaiveDate, PathBuf>,
     dir: &path::Path,
@@ -57,22 +70,24 @@ struct Post {
     id: String,
     permalink: String,
     html: String,
+
+    updated: String,
 }
 
 #[derive(Serialize, Debug)]
 struct TemplateData {
     title: String,
     posts: Vec<Post>,
+
+    updated: String,
+    atom_url: String,
 }
 
 fn create_index(
     hb: &handlebars::Handlebars,
     dates: &BTreeMap<NaiveDate, PathBuf>,
 ) -> result::Result<(), Box<dyn Error>> {
-    let mut td = TemplateData {
-        title: "2023.8-p.info".to_string(),
-        posts: Vec::new(),
-    };
+    let mut posts: Vec<Post> = Vec::new();
 
     for (date, path) in dates.iter().rev().take(5) {
         let f = File::open(path)?;
@@ -84,16 +99,21 @@ fn create_index(
         let mut html = String::new();
         html::push_html(&mut html, parser);
 
-        td.posts.push(Post {
+        posts.push(Post {
             date: date.format("%Y-%m-%d").to_string(),
             permalink: date.format("%Y%m.html#d%d").to_string(),
             id: "".to_string(),
+            updated: date.format("%Y-%m-%dT00:00:00Z").to_string(),
             html,
         });
     }
 
-    dbg!(&td);
-
+    let td = TemplateData {
+        title: "2023.8-p.info".to_string(),
+        updated: "".to_string(),
+        atom_url: "".to_string(),
+        posts,
+    };
     let fw = File::create("html/index.html")?;
     let mut bw = BufWriter::new(fw);
     bw.write(hb.render("index", &td)?.as_bytes())?;
@@ -101,16 +121,16 @@ fn create_index(
     Ok(())
 }
 
-fn make_monthly(
+fn create_atom(
     hb: &handlebars::Handlebars,
-    posts: &Vec<(&NaiveDate, &PathBuf)>,
+    dates: &BTreeMap<NaiveDate, PathBuf>,
+    site_url: &str,
 ) -> result::Result<(), Box<dyn Error>> {
-    let mut td = TemplateData {
-        title: "2023.8-p.info".to_string(),
-        posts: Vec::new(),
-    };
+    let mut posts: Vec<Post> = Vec::new();
 
-    for (date, path) in posts {
+    let mut updated: Option<NaiveDate> = None;
+
+    for (date, path) in dates.iter().rev().take(5) {
         let f = File::open(path)?;
         let mut buf_reader = BufReader::new(f);
         let mut content = String::new();
@@ -120,15 +140,66 @@ fn make_monthly(
         let mut html = String::new();
         html::push_html(&mut html, parser);
 
-        td.posts.push(Post {
+        if updated == None {
+            updated = Some(*date);
+        }
+
+        posts.push(Post {
             date: date.format("%Y-%m-%d").to_string(),
-            permalink: "".to_string(),
-            id: date.format("d%d").to_string(),
+            permalink: format!("{}/{}", site_url, date.format("%Y%m.html#d%d")),
+            id: "".to_string(),
+            updated: date.format("%Y-%m-%dT00:00:00Z").to_string(),
             html,
         });
     }
 
-    let path = posts[0].0.format("html/%Y%m.html").to_string();
+    let td = TemplateData {
+        title: "2023.8-p.info".to_string(),
+        updated: updated.unwrap().format("%Y-%m-%dT00:00:00Z").to_string(),
+        atom_url: format!("{}/atom.xml", site_url),
+        posts,
+    };
+
+    let fw = File::create("html/atom.xml")?;
+    let mut bw = BufWriter::new(fw);
+    bw.write(hb.render("atom", &td)?.as_bytes())?;
+
+    Ok(())
+}
+
+fn make_monthly(
+    hb: &handlebars::Handlebars,
+    dates_to_posts: &Vec<(&NaiveDate, &PathBuf)>,
+) -> result::Result<(), Box<dyn Error>> {
+    let mut posts: Vec<Post> = Vec::new();
+
+    for (date, path) in dates_to_posts {
+        let f = File::open(path)?;
+        let mut buf_reader = BufReader::new(f);
+        let mut content = String::new();
+        buf_reader.read_to_string(&mut content)?;
+
+        let parser = Parser::new(&content);
+        let mut html = String::new();
+        html::push_html(&mut html, parser);
+
+        posts.push(Post {
+            date: date.format("%Y-%m-%d").to_string(),
+            permalink: "".to_string(),
+            id: date.format("d%d").to_string(),
+            updated: "".to_string(),
+            html,
+        });
+    }
+
+    let td = TemplateData {
+        title: "2023.8-p.info".to_string(),
+        updated: "".to_string(),
+        atom_url: "".to_string(),
+        posts,
+    };
+
+    let path = dates_to_posts[0].0.format("html/%Y%m.html").to_string();
     let fw = File::create(path)?;
     let mut bw = BufWriter::new(fw);
     bw.write(hb.render("index", &td)?.as_bytes())?;
@@ -136,32 +207,44 @@ fn make_monthly(
     Ok(())
 }
 
-fn real_main() -> result::Result<(), Box<dyn Error>> {
-    let dates = collect_files("data")?;
-
-    let mut handlebars = Handlebars::new();
-
-    let f = File::open("data/index.html")?;
+fn register_template(
+    hb: &mut Handlebars,
+    name: &str,
+    path: &str,
+) -> result::Result<(), Box<dyn Error>> {
+    let f = File::open(path)?;
     let mut reader = BufReader::new(f);
     let mut content = String::new();
     reader.read_to_string(&mut content)?;
 
-    handlebars.register_template_string("index", content)?;
+    hb.register_template_string(name, content)?;
+
+    Ok(())
+}
+
+fn real_main(opts: &Options) -> result::Result<(), Box<dyn Error>> {
+    let dates = collect_files(&opts.dir)?;
+
+    let mut handlebars = Handlebars::new();
+
+    register_template(&mut handlebars, "index", "data/index.html")?;
+    register_template(&mut handlebars, "atom", "data/atom.xml")?;
 
     create_index(&handlebars, &dates)?;
+    create_atom(&handlebars, &dates, &opts.site_url)?;
 
     let mut prev_date: Option<NaiveDate> = None;
     let mut posts: Vec<(&NaiveDate, &PathBuf)> = Vec::new();
     for (date, path) in dates.iter() {
         if let Some(prev_date) = prev_date {
-	    if prev_date.year() != date.year() || prev_date.month() != date.month() {
+            if prev_date.year() != date.year() || prev_date.month() != date.month() {
                 make_monthly(&handlebars, &posts)?;
                 posts.clear();
             }
         }
 
         posts.push((date, path));
-	prev_date = Some(*date);
+        prev_date = Some(*date);
     }
 
     if posts.len() > 0 {
@@ -172,7 +255,9 @@ fn real_main() -> result::Result<(), Box<dyn Error>> {
 }
 
 fn main() {
-    let result = real_main();
+    let opts: Options = argh::from_env();
+
+    let result = real_main(&opts);
     if let Err(e) = result {
         eprintln!("{}", e);
         exit(1);

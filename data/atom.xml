@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>{{ title }}</title>
+  <updated>{{ updated }}</updated>
+
+  <link href="{{ atom_url }}" rel="self" />
+  <id>{{ atom_url }}</id>
+
+  <author>
+    <name>Kazuyoshi Kato</name>
+  </author>
+
+  {{#each posts}}
+  <entry>
+    <title>{{ this.date }}</title>
+    <link href="{{ this.permalink }}" />
+    <id>{{ this.permalink }}</id>
+    <updated>{{ this.updated }}</updated>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml">{{{ this.html }}}</div>
+    </content>
+  </entry>
+  {{/each}}
+</feed>
