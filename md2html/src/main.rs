@@ -86,6 +86,7 @@ struct TemplateData {
 fn create_index(
     hb: &handlebars::Handlebars,
     dates: &BTreeMap<NaiveDate, PathBuf>,
+    site_url: &str,
 ) -> result::Result<(), Box<dyn Error>> {
     let mut posts: Vec<Post> = Vec::new();
 
@@ -111,7 +112,7 @@ fn create_index(
     let td = TemplateData {
         title: "2023.8-p.info".to_string(),
         updated: "".to_string(),
-        atom_url: "".to_string(),
+        atom_url: format!("{}/atom.xml", site_url),
         posts,
     };
     let fw = File::create("html/index.html")?;
@@ -230,7 +231,7 @@ fn real_main(opts: &Options) -> result::Result<(), Box<dyn Error>> {
     register_template(&mut handlebars, "index", "data/index.html")?;
     register_template(&mut handlebars, "atom", "data/atom.xml")?;
 
-    create_index(&handlebars, &dates)?;
+    create_index(&handlebars, &dates, &opts.site_url)?;
     create_atom(&handlebars, &dates, &opts.site_url)?;
 
     let mut prev_date: Option<NaiveDate> = None;
