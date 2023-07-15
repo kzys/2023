@@ -26,6 +26,8 @@ struct Options {
     dir: String,
 }
 
+const TITLE_DATE_FORMAT: &str = "%Y-%m-%d %a";
+
 fn scan_year_dir(
     dates: &mut BTreeMap<NaiveDate, PathBuf>,
     dir: &path::Path,
@@ -101,7 +103,7 @@ fn create_index(
         html::push_html(&mut html, parser);
 
         posts.push(Post {
-            date: date.format("%Y-%m-%d").to_string(),
+            date: date.format(TITLE_DATE_FORMAT).to_string(),
             permalink: date.format("%Y%m.html#d%d").to_string(),
             id: "".to_string(),
             updated: date.format("%Y-%m-%dT00:00:00Z").to_string(),
@@ -146,7 +148,7 @@ fn create_atom(
         }
 
         posts.push(Post {
-            date: date.format("%Y-%m-%d").to_string(),
+            date: date.format(TITLE_DATE_FORMAT).to_string(),
             permalink: format!("{}/{}", site_url, date.format("%Y%m.html#d%d")),
             id: "".to_string(),
             updated: date.format("%Y-%m-%dT00:00:00Z").to_string(),
@@ -185,7 +187,7 @@ fn make_monthly(
         html::push_html(&mut html, parser);
 
         posts.push(Post {
-            date: date.format("%Y-%m-%d").to_string(),
+            date: date.format(TITLE_DATE_FORMAT).to_string(),
             permalink: "".to_string(),
             id: date.format("d%d").to_string(),
             updated: "".to_string(),
