@@ -10,15 +10,15 @@
     <name>Kazuyoshi Kato</name>
   </author>
 
-  {{#each posts}}
+  {% for post in posts %}
   <entry>
-    <title>{{ this.date }}</title>
-    <link href="{{ this.permalink }}" />
-    <id>{{ this.permalink }}</id>
-    <updated>{{ this.updated }}</updated>
+    <title>{{ post.date }}</title>
+    <link href="{{ post.permalink }}" />
+    <id>{{ post.permalink }}</id>
+    <updated>{{ post.updated }}</updated>
     <content type="xhtml">
-      <div xmlns="http://www.w3.org/1999/xhtml">{{{ this.html }}}</div>
+      <div xmlns="http://www.w3.org/1999/xhtml">{{ post.html | safe }}</div>
     </content>
   </entry>
-  {{/each}}
+  {% endfor %}
 </feed>

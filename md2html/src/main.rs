@@ -1,14 +1,14 @@
 use chrono::{Datelike, NaiveDate};
-use handlebars::Handlebars;
+use minijinja::Environment;
 use pulldown_cmark::{html, Parser};
 use regex::Regex;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::{
     collections::BTreeMap,
     error::Error,
     fs::{self, File},
-    io::{self, BufReader, BufWriter, Read, Write},
-    path::{self, Path, PathBuf},
+    io::{BufReader, BufWriter, Read, Write},
+    path::{self, PathBuf},
     process::exit,
     result,
 };
@@ -86,7 +86,7 @@ struct TemplateData {
 }
 
 fn create_index(
-    hb: &handlebars::Handlebars,
+    env: &mut Environment,
     dates: &BTreeMap<NaiveDate, PathBuf>,
     site_url: &str,
 ) -> result::Result<(), Box<dyn Error>> {
@@ -119,13 +119,14 @@ fn create_index(
     };
     let fw = File::create("html/index.html")?;
     let mut bw = BufWriter::new(fw);
-    bw.write(hb.render("index", &td)?.as_bytes())?;
+    let t = env.get_template("index")?;
+    bw.write(t.render(&td)?.as_bytes())?;
 
     Ok(())
 }
 
 fn create_atom(
-    hb: &handlebars::Handlebars,
+    env: &mut Environment,
     dates: &BTreeMap<NaiveDate, PathBuf>,
     site_url: &str,
 ) -> result::Result<(), Box<dyn Error>> {
@@ -165,13 +166,14 @@ fn create_atom(
 
     let fw = File::create("html/atom.xml")?;
     let mut bw = BufWriter::new(fw);
-    bw.write(hb.render("atom", &td)?.as_bytes())?;
+    let t = env.get_template("atom")?;
+    bw.write(t.render(&td)?.as_bytes())?;
 
     Ok(())
 }
 
 fn make_monthly(
-    hb: &handlebars::Handlebars,
+    env: &mut Environment,
     dates_to_posts: &Vec<(&NaiveDate, &PathBuf)>,
 ) -> result::Result<(), Box<dyn Error>> {
     let mut posts: Vec<Post> = Vec::new();
@@ -205,13 +207,14 @@ fn make_monthly(
     let path = dates_to_posts[0].0.format("html/%Y%m.html").to_string();
     let fw = File::create(path)?;
     let mut bw = BufWriter::new(fw);
-    bw.write(hb.render("index", &td)?.as_bytes())?;
+    let t = env.get_template("index")?;
+    bw.write(t.render(&td)?.as_bytes())?;
 
     Ok(())
 }
 
 fn register_template(
-    hb: &mut Handlebars,
+    env: &mut Environment,
     name: &str,
     path: &str,
 ) -> result::Result<(), Box<dyn Error>> {
@@ -220,7 +223,7 @@ fn register_template(
     let mut content = String::new();
     reader.read_to_string(&mut content)?;
 
-    hb.register_template_string(name, content)?;
+    env.add_template_owned(name.to_string(), content)?;
 
     Ok(())
 }
@@ -228,20 +231,20 @@ fn register_template(
 fn real_main(opts: &Options) -> result::Result<(), Box<dyn Error>> {
     let dates = collect_files(&opts.dir)?;
 
-    let mut handlebars = Handlebars::new();
+    let mut env = Environment::new();
 
-    register_template(&mut handlebars, "index", "data/index.html")?;
-    register_template(&mut handlebars, "atom", "data/atom.xml")?;
+    register_template(&mut env, "index", "data/index.html")?;
+    register_template(&mut env, "atom", "data/atom.xml")?;
 
-    create_index(&handlebars, &dates, &opts.site_url)?;
-    create_atom(&handlebars, &dates, &opts.site_url)?;
+    create_index(&mut env, &dates, &opts.site_url)?;
+    create_atom(&mut env, &dates, &opts.site_url)?;
 
     let mut prev_date: Option<NaiveDate> = None;
     let mut posts: Vec<(&NaiveDate, &PathBuf)> = Vec::new();
     for (date, path) in dates.iter() {
         if let Some(prev_date) = prev_date {
             if prev_date.year() != date.year() || prev_date.month() != date.month() {
-                make_monthly(&handlebars, &posts)?;
+                make_monthly(&mut env, &posts)?;
                 posts.clear();
             }
         }
@@ -251,7 +254,7 @@ fn real_main(opts: &Options) -> result::Result<(), Box<dyn Error>> {
     }
 
     if posts.len() > 0 {
-        make_monthly(&handlebars, &posts)?;
+        make_monthly(&mut env, &posts)?;
     }
 
     Ok(())
