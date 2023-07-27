@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <title>{{ title }}</title>
-  <updated>{{ updated }}</updated>
+  <updated>{{ updated | datetimeformat(format="iso") }}</updated>
 
   <link href="{{ atom_url }}" rel="self" />
   <id>{{ atom_url }}</id>
@@ -15,7 +15,7 @@
     <title>{{ post.date }}</title>
     <link href="{{ post.permalink }}" />
     <id>{{ post.permalink }}</id>
-    <updated>{{ post.updated }}</updated>
+    <updated>{{ post.updated | datetimeformat(format="iso") }}</updated>
     <content type="xhtml">
       <div xmlns="http://www.w3.org/1999/xhtml">{{ post.html | safe }}</div>
     </content>

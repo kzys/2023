@@ -1,4 +1,4 @@
-use chrono::{Datelike, NaiveDate};
+use chrono::{DateTime, Datelike, FixedOffset, NaiveDate, Utc};
 use minijinja::Environment;
 use pulldown_cmark::{html, Parser};
 use regex::Regex;
@@ -25,8 +25,6 @@ struct Options {
     #[argh(positional)]
     dir: String,
 }
-
-const TITLE_DATE_FORMAT: &str = "%Y-%m-%d %a";
 
 fn scan_year_dir(
     dates: &mut BTreeMap<NaiveDate, PathBuf>,
@@ -68,12 +66,12 @@ fn collect_files(dir: &str) -> result::Result<BTreeMap<NaiveDate, PathBuf>, Box<
 
 #[derive(Serialize, Debug)]
 struct Post {
-    date: String,
+    date: NaiveDate,
     id: String,
     permalink: String,
     html: String,
 
-    updated: String,
+    updated: DateTime<Utc>,
 }
 
 #[derive(Serialize, Debug)]
@@ -81,7 +79,7 @@ struct TemplateData {
     title: String,
     posts: Vec<Post>,
 
-    updated: String,
+    updated: Option<DateTime<Utc>>,
     atom_url: String,
 }
 
@@ -103,17 +101,17 @@ fn create_index(
         html::push_html(&mut html, parser);
 
         posts.push(Post {
-            date: date.format(TITLE_DATE_FORMAT).to_string(),
+            date: date.clone(),
             permalink: date.format("%Y%m.html#d%d").to_string(),
             id: "".to_string(),
-            updated: date.format("%Y-%m-%dT00:00:00Z").to_string(),
+            updated: date.and_hms_opt(0, 0, 0).map(|x| x.and_utc()).unwrap(),
             html,
         });
     }
 
     let td = TemplateData {
         title: "2023.8-p.info".to_string(),
-        updated: "".to_string(),
+        updated: None,
         atom_url: format!("{}/atom.xml", site_url),
         posts,
     };
@@ -149,17 +147,17 @@ fn create_atom(
         }
 
         posts.push(Post {
-            date: date.format(TITLE_DATE_FORMAT).to_string(),
+            date: date.clone(),
             permalink: format!("{}/{}", site_url, date.format("%Y%m.html#d%d")),
             id: "".to_string(),
-            updated: date.format("%Y-%m-%dT00:00:00Z").to_string(),
+            updated: date.and_hms_opt(0, 0, 0).map(|x| x.and_utc()).unwrap(),
             html,
         });
     }
 
     let td = TemplateData {
         title: "2023.8-p.info".to_string(),
-        updated: updated.unwrap().format("%Y-%m-%dT00:00:00Z").to_string(),
+        updated: updated.unwrap().and_hms_opt(0, 0, 0).map(|x| x.and_utc()),
         atom_url: format!("{}/atom.xml", site_url),
         posts,
     };
@@ -189,17 +187,17 @@ fn make_monthly(
         html::push_html(&mut html, parser);
 
         posts.push(Post {
-            date: date.format(TITLE_DATE_FORMAT).to_string(),
+            date: *date.clone(),
             permalink: "".to_string(),
             id: date.format("d%d").to_string(),
-            updated: "".to_string(),
+            updated: date.and_hms_opt(0, 0, 0).map(|x| x.and_utc()).unwrap(),
             html,
         });
     }
 
     let td = TemplateData {
         title: "2023.8-p.info".to_string(),
-        updated: "".to_string(),
+        updated: None,
         atom_url: "".to_string(),
         posts,
     };
@@ -232,6 +230,7 @@ fn real_main(opts: &Options) -> result::Result<(), Box<dyn Error>> {
     let dates = collect_files(&opts.dir)?;
 
     let mut env = Environment::new();
+    minijinja_contrib::add_to_environment(&mut env);
 
     register_template(&mut env, "index", "data/index.html")?;
     register_template(&mut env, "atom", "data/atom.xml")?;
