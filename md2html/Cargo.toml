@@ -7,9 +7,10 @@ edition = "2021"
 
 [dependencies]
 regex = "1"
-chrono = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
 markdown = "1.0.0-alpha.10"
 pulldown-cmark = "0.9.3"
-handlebars = "4.3.7"
 serde = { version = "1.0.164", features = ["derive"] }
 argh = "0.1.10"
+minijinja = { version = "1.0.5", features = ["loader"] }
+minijinja-contrib = { version = "1.0.5", features = ["datetime"] }
